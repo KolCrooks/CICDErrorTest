@@ -1,0 +1,32 @@
+name: Validation
+on: [pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  Test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ci_db_test
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Deps
+      run: sudo apt install postgresql-client
+    - name: MigrateDb
+      run: |
+        psql -h localhost -U postgres -d ci_db_test -c "CREATE TABLE IF NOT EXISTS pfp_user_sync (user_id bigint, guild_id bigint, PRIMARY KEY (user_id, guild_id));"
+      env:
+        PGPASSWORD: postgres
+    - name: Run tests
+      run: RUST_BACKTRACE=1 cargo run --verbose --
